@@ -2,7 +2,7 @@ import org.gradle.kotlin.dsl.dependencies
 
 val group = "cn.nukkitmot.example"
 
-val pluginName = "ExamplePlugin-Maven"
+val pluginName = "ExamplePlugin"
 val pluginVersion = "1.0.0"
 val pluginAuthor = "Nukkit Project"
 val pluginWebsite = "https://github.com/MemoriesOfTime/ExamplePlugin-Maven/"
@@ -12,7 +12,7 @@ val pluginApi = listOf("1.0.5")
 
 plugins {
     java
-    kotlin("jvm") version "2.2.0"
+    kotlin("jvm") version "2.3.20"
     kotlin("plugin.serialization") version "2.2.0"
     kotlin("plugin.lombok") version "2.2.0"
     id("io.freefair.lombok") version "8.12.1"

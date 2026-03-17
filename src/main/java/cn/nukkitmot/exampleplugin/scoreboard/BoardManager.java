@@ -16,16 +16,17 @@
  *
  */
 
-package cn.nukkitmot.exampleplugin.text;
+package cn.nukkitmot.exampleplugin.scoreboard;
 
 import cn.nukkit.Player;
+import cn.nukkit.scheduler.PluginTask;
 import lombok.Getter;
 
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static cn.nukkitmot.exampleplugin.text.ScoreBoardAPI.createBoard;
+import static cn.nukkitmot.exampleplugin.scoreboard.ScoreBoardAPI.createBoard;
 
 public class BoardManager {
 
@@ -34,7 +35,7 @@ public class BoardManager {
     private final BoardAdapter adapter;
     @Getter
     private final Map<UUID, IBoard> boards = new ConcurrentHashMap<>();
-    private cn.nukkit.scheduler.TaskHandler runnable;
+    private PluginTask runnable;
 
     public BoardManager(cn.nukkit.plugin.Plugin plugin, BoardAdapter adapter) {
         this.plugin = plugin;
@@ -49,20 +50,21 @@ public class BoardManager {
             board.update(adapter.getTitle(), adapter.getStrings(player));
         }
 
-        runnable = plugin.getServer().getScheduler().scheduleDelayedRepeatingTask(new Runnable() {
+        runnable = new PluginTask<>(plugin) {
             private int tick = 0;
 
             @Override
-            public void run() {
+            public void onRun(int currentTick) {
                 tick++;
                 for (Player player : plugin.getServer().getOnlinePlayers().values()) {
-                    IBoard board = getBoard(player);
+                    cn.nukkitmot.exampleplugin.scoreboard.IBoard board = getBoard(player);
                     if (board != null) {
                         board.update(adapter.getTitle(), adapter.getStrings(player));
                     }
                 }
             }
-        }, 0, 10);
+        };
+        plugin.getServer().getScheduler().scheduleRepeatingTask(runnable, 10);
     }
 
     public IBoard getBoard(Player player) {

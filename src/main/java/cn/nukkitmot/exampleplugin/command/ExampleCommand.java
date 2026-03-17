@@ -14,6 +14,7 @@ import cn.nukkit.lang.PluginI18n;
 import cn.nukkit.utils.Identifier;
 import cn.nukkit.utils.TextFormat;
 import cn.nukkitmot.exampleplugin.ExamplePlugin;
+import cn.nukkitmot.exampleplugin.scoreboard.ScoreBoardAPI;
 
 /**
  * 示例命令类
@@ -140,6 +141,7 @@ public class ExampleCommand extends PluginCommand<ExamplePlugin> {
                     pickaxe.addEnchantment(enchantment);
                     // 将物品添加到玩家背包
                     player.getInventory().addItem(pickaxe);
+
                 }
             }
             // 子命令2：say2 - 向指定玩家发送消息

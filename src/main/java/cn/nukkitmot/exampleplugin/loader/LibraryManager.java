@@ -18,7 +18,12 @@
 
 package cn.nukkitmot.exampleplugin.loader;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -49,9 +54,121 @@ public class LibraryManager {
     }
 
     public void loadLibrary(Library library) {
+        Path libraryPath = getLibraryPath(library);
+
+        if (!Files.exists(libraryPath)) {
+            downloadLibrary(library, libraryPath);
+        }
+
+        verifyChecksum(libraryPath, library.getChecksum());
+
+        addToClasspath(libraryPath);
     }
 
     protected void addToClasspath(Path file) {
+    }
+
+    protected void downloadLibrary(Library library, Path targetPath) {
+        try {
+            Files.createDirectories(targetPath.getParent());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to create library directory: " + targetPath.getParent(), e);
+        }
+
+        URL libraryUrl = resolveLibraryUrl(library);
+        if (libraryUrl == null) {
+            throw new RuntimeException("Could not resolve library URL for: " + library);
+        }
+
+        try (InputStream inputStream = libraryUrl.openStream()) {
+            Files.copy(inputStream, targetPath);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to download library: " + libraryUrl, e);
+        }
+    }
+
+    protected URL resolveLibraryUrl(Library library) {
+        if (!library.getUrls().isEmpty()) {
+            for (String url : library.getUrls()) {
+                try {
+                    return new URL(url);
+                } catch (Exception ignored) {
+                }
+            }
+        }
+
+        List<String> repos = new ArrayList<>(library.getRepositories());
+        if (repos.isEmpty()) {
+            repos.addAll(getRepositories());
+        }
+        if (repos.isEmpty()) {
+            repos.add(Repositories.MAVEN_CENTRAL);
+        }
+
+        String artifactPath = buildArtifactPath(library);
+
+        for (String repo : repos) {
+            try {
+                String urlStr = repo + artifactPath;
+                URL url = new URL(urlStr);
+                if (isUrlAccessible(url)) {
+                    return url;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        return null;
+    }
+
+    private boolean isUrlAccessible(URL url) {
+        try (InputStream inputStream = url.openStream()) {
+            return inputStream.read() != -1;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    protected String buildArtifactPath(Library library) {
+        StringBuilder path = new StringBuilder();
+        path.append(library.getGroupId().replace(".", "/"));
+        path.append("/");
+        path.append(library.getArtifactId());
+        path.append("/");
+        path.append(library.getVersion());
+        path.append("/");
+        path.append(library.getArtifactId());
+        path.append("-");
+        path.append(library.getVersion());
+
+        if (library.getClassifier() != null && !library.getClassifier().isEmpty()) {
+            path.append("-").append(library.getClassifier());
+        }
+
+        path.append(".jar");
+
+        return path.toString();
+    }
+
+    protected void verifyChecksum(Path libraryPath, byte[] expectedChecksum) {
+        if (expectedChecksum == null || expectedChecksum.length == 0) {
+            return;
+        }
+
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] actualChecksum = digest.digest(Files.readAllBytes(libraryPath));
+
+            if (!MessageDigest.isEqual(expectedChecksum, actualChecksum)) {
+                throw new SecurityException("Library checksum verification failed: " + libraryPath);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to verify library checksum: " + libraryPath, e);
+        }
+    }
+
+    public Path getCachePath() {
+        return cachePath;
     }
 
     public Path getLibraryPath(Library library) {

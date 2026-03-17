@@ -1,5 +1,6 @@
 package cn.nukkitmot.exampleplugin;
 
+import cn.cyanbukkit.example.MainKt;
 import cn.nukkit.Server;
 import cn.nukkit.entity.custom.EntityManager;
 import cn.nukkit.item.Item;
@@ -18,6 +19,8 @@ import cn.nukkitmot.exampleplugin.custom.item.CandyCaneSword;
 import cn.nukkitmot.exampleplugin.loader.Library;
 import cn.nukkitmot.exampleplugin.loader.NukkitLibraryManager;
 import cn.nukkitmot.exampleplugin.loader.Repositories;
+import cn.nukkitmot.exampleplugin.scoreboard.BoardManager;
+import cn.nukkitmot.exampleplugin.scoreboard.example.ImplInReal;
 import lombok.Getter;
 
 import java.util.List;
@@ -37,6 +40,9 @@ public class ExamplePlugin extends PluginBase {
     public static ExampleConfig EXAMPLE_CONFIG;
     private final NukkitLibraryManager libraryManager;
 
+    @Getter
+    public static BoardManager boardManager;
+
     public ExamplePlugin() {
         libraryManager = new NukkitLibraryManager(this);
 
@@ -52,8 +58,7 @@ public class ExamplePlugin extends PluginBase {
                 .build();
 
         libraryManager.loadLibrary(kotlinStdLib);
-
-        getLogger().info("依赖库加载完成");
+        System.out.println("依赖库加载完成");
     }
 
 
@@ -68,10 +73,10 @@ public class ExamplePlugin extends PluginBase {
         this.getServer().getCommandMap().register("exampleplugin", new ExampleCommand());
 
         //register the custom item of server
-        registerItems();
+//        registerItems();
         //register the custom entity of server
-        registerEntities();
-        Enchantment.register(new AutoRemeltedEnchatment(), true);
+//        registerEntities();
+//        Enchantment.register(new AutoRemeltedEnchatment(), true);
 
         this.getLogger().info(TextFormat.WHITE + "I've been loaded!");
     }
@@ -99,7 +104,8 @@ public class ExamplePlugin extends PluginBase {
 
         EXAMPLE_CONFIG.getObjectKey().setSubKey1("this a new random number "+Math.random()).save();
         getLogger().info(EXAMPLE_CONFIG.getObjectKey().getSubKey1());
-
+        boardManager = new BoardManager(this, new ImplInReal());
+        MainKt.INSTANCE.run();
     }
 
     @Override

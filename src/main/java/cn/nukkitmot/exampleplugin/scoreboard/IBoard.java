@@ -16,7 +16,7 @@
  *
  */
 
-package cn.nukkitmot.exampleplugin.text;
+package cn.nukkitmot.exampleplugin.scoreboard;
 
 import cn.nukkit.Player;
 

@@ -1,9 +1,13 @@
 package cn.nukkitmot.exampleplugin;
 
+import cn.nukkit.Player;
 import cn.nukkit.event.EventHandler;
 import cn.nukkit.event.EventPriority;
 import cn.nukkit.event.Listener;
+import cn.nukkit.event.player.PlayerJoinEvent;
 import cn.nukkit.event.server.ServerCommandEvent;
+import cn.nukkitmot.exampleplugin.scoreboard.IBoard;
+import cn.nukkitmot.exampleplugin.scoreboard.example.ImplInReal;
 
 /**
  * 事件监听器类
@@ -57,4 +61,13 @@ public class EventListener implements Listener {
         // 可以在此处添加更多事件处理逻辑
         // 例如：拦截特定命令、记录日志、修改命令等
     }
+
+
+    @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+        IBoard board = ExamplePlugin.boardManager.getBoard(player);
+        event.setJoinMessage(player.getName() + " 欢迎来到nukkit世界");
+     }
+
 }
