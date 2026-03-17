@@ -1,0 +1,10 @@
+this-is-a-key: Hello! Config!
+another-key: true
+object-key:
+  enabled: false
+  subKey1: nukkit
+  subKey2: 2023
+array-key:
+  - first element
+  - second element
+  - third element

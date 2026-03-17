@@ -1,12 +1,12 @@
 #name, main, version and api are required
-name: ${pluginName}
-main: ${pluginMain}
-version: "${pluginVersion}"
-api: ${pluginApi}
+name: ExamplePlugin-Maven
+main: cn.nukkitmot.exampleplugin.ExamplePlugin
+version: "1.0.0"
+api: 1.0.5
 load: POSTWORLD
-author: ${pluginAuthor}
-description: ${pluginDescription}
-website: ${pluginWebsite}
+author: Nukkit Project
+description: Example plugin showing the API
+website: https://github.com/MemoriesOfTime/ExamplePlugin-Maven/
 prefix: "Example"
 # Plugin will be loaded before these. Any cyclic loadbefore's or dependencies's will throw errors!
 loadbefore: ["ImportantPlugin"]

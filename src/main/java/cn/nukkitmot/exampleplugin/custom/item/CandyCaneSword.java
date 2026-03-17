@@ -2,9 +2,6 @@ package cn.nukkitmot.exampleplugin.custom.item;
 
 import cn.nukkit.item.customitem.CustomItemDefinition;
 import cn.nukkit.item.customitem.ItemCustom;
-import cn.nukkit.item.customitem.data.ItemCreativeCategory;
-import cn.nukkit.item.customitem.data.ItemCreativeGroup;
-import cn.nukkit.item.customitem.data.RenderOffsets;
 
 public class CandyCaneSword extends ItemCustom {
     private static String spacenameId = "nukkit:candy_cane_sword";
@@ -16,20 +13,15 @@ public class CandyCaneSword extends ItemCustom {
     }
 
     public int scaleOffset() {
-        return 32; // 需要是16的倍数，如 32、64、128
+        return 32;
     }
 
-    /**
-     * 该方法设置自定义物品的定义
-     */
     @Override
     public CustomItemDefinition getDefinition() {
         return CustomItemDefinition
-                .simpleBuilder(this, ItemCreativeCategory.EQUIPMENT)
-                .creativeGroup(ItemCreativeGroup.SWORD)
+                .simpleBuilder(this, null)
                 .allowOffHand(true)
                 .handEquipped(true)
-                .renderOffsets(RenderOffsets.scaleOffset(scaleOffset()))
                 .build();
     }
 
