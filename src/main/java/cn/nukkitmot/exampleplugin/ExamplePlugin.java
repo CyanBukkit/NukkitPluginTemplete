@@ -54,7 +54,7 @@ public class ExamplePlugin extends PluginBase {
         Library kotlinStdLib = Library.builder()
                 .groupId("org.jetbrains.kotlin")
                 .artifactId("kotlin-stdlib")
-                .version("1.9.20")
+                .version("2.3.20")
                 .build();
 
         libraryManager.loadLibrary(kotlinStdLib);

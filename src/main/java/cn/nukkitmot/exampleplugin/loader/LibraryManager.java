@@ -1,181 +1,256 @@
-/*
- * Copyright (c) 2026.
- * # 太霄玉府五雷使院镇煞符
- * # 敕令：诸 BUG 急退，急急如律令！
- * #
- * # 雷  火  雷
- * #    部  令
- * # 雷  火  雷
- * #
- * # 净天地神咒（节选）
- * # 天地自然，秽气分散，洞中玄虚，晃朗太元；
- * # 八方威神，使我自然，灵宝符命，普告九天。
- * #
- * # 本代码受太上老君、九天应元雷声普化天尊庇佑，
- * # 如生 BUG，则坎离交泰，雷火丹成，BUG 自化虚无。
- *
- */
-
 package cn.nukkitmot.exampleplugin.loader;
 
+import cn.nukkitmot.exampleplugin.loader.Logger.LibLogger;
+import cn.nukkitmot.exampleplugin.loader.Logger.LogAdapter;
+import cn.nukkitmot.exampleplugin.loader.Logger.LogLevel;
+
+import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.net.MalformedURLException;
+import java.net.SocketTimeoutException;
 import java.net.URL;
+import java.net.URLConnection;
+import java.net.UnknownHostException;
+import java.nio.file.CopyOption;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
-import java.util.ArrayList;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
-public class LibraryManager {
-    private final Path cachePath;
-    private final String directoryName;
-    private final List<String> repositories = new ArrayList<>();
+public abstract class LibraryManager {
+    protected final LibLogger logger;
+    protected final Path saveDirectory;
+    private final Set<String> repositories = new LinkedHashSet<>();
+    private RelocationHelper relocator;
+    private final Map<String, IsolatedClassLoader> isolatedLibraries = new HashMap<>();
 
-    public LibraryManager(Path cachePath, String directoryName) {
-        this.cachePath = cachePath;
-        this.directoryName = directoryName;
+    @Deprecated
+    protected LibraryManager(LogAdapter logAdapter, Path dataDirectory) {
+        this.logger = new LibLogger(Objects.requireNonNull(logAdapter, "logAdapter"));
+        this.saveDirectory = Objects.requireNonNull(dataDirectory, "dataDirectory").toAbsolutePath().resolve("lib");
     }
 
-    public LibraryManager(Path cachePath) {
-        this(cachePath, "libs");
+    protected LibraryManager(LogAdapter logAdapter, Path dataDirectory, String directoryName) {
+        this.logger = new LibLogger(Objects.requireNonNull(logAdapter, "logAdapter"));
+        this.saveDirectory = Objects.requireNonNull(dataDirectory, "dataDirectory").toAbsolutePath().resolve(Objects.requireNonNull(directoryName, "directoryName"));
     }
 
-    public LibraryManager addRepository(String repository) {
-        if (!repositories.contains(repository)) {
-            repositories.add(repository.endsWith("/") ? repository : repository + "/");
+    protected abstract void addToClasspath(Path var1);
+
+    protected void addToIsolatedClasspath(Library library, Path file) {
+        String id = library.getId();
+        IsolatedClassLoader classLoader = id != null ? this.isolatedLibraries.computeIfAbsent(id, s -> new IsolatedClassLoader()) : new IsolatedClassLoader();
+        classLoader.addPath(file);
+    }
+
+    public IsolatedClassLoader getIsolatedClassLoaderOf(String libraryId) {
+        return this.isolatedLibraries.get(libraryId);
+    }
+
+    public LogLevel getLogLevel() {
+        return this.logger.getLevel();
+    }
+
+    public void setLogLevel(LogLevel level) {
+        this.logger.setLevel(level);
+    }
+
+    public Collection<String> getRepositories() {
+        synchronized (repositories) {
+            return Collections.unmodifiableList(new LinkedList<>(repositories));
         }
-        return this;
     }
 
-    public List<String> getRepositories() {
-        return Collections.unmodifiableList(repositories);
+    public void addRepository(String url) {
+        String repo = Objects.requireNonNull(url, "url").endsWith("/") ? url : url + '/';
+        synchronized (repositories) {
+            this.repositories.add(repo);
+        }
+    }
+
+    public void addMavenLocal() {
+        this.addRepository(Paths.get(System.getProperty("user.home"), ".m2/repository").toUri().toString());
+    }
+
+    public void addMavenCentral() {
+        this.addRepository("https://repo1.maven.org/maven2/");
+    }
+
+    public void addSonatype() {
+        this.addRepository("https://oss.sonatype.org/content/groups/public/");
+    }
+
+    public void addJitPack() {
+        this.addRepository("https://jitpack.io/");
+    }
+
+    public Collection<String> resolveLibrary(Library library) {
+        LinkedHashSet<String> urls = new LinkedHashSet<>(Objects.requireNonNull(library, "library").getUrls());
+        for (String repository : library.getRepositories()) {
+            urls.add(repository + library.getPath());
+        }
+        for (String repository : this.getRepositories()) {
+            urls.add(repository + library.getPath());
+        }
+        return Collections.unmodifiableSet(urls);
+    }
+
+    private byte[] downloadLibrary(String url) {
+        try {
+            URLConnection connection = new URL(Objects.requireNonNull(url, "url")).openConnection();
+            connection.setConnectTimeout(5000);
+            connection.setReadTimeout(5000);
+            connection.setRequestProperty("User-Agent", "libby/1.1.5");
+            InputStream in = connection.getInputStream();
+            try {
+                byte[] buf = new byte[8192];
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                try {
+                    int len;
+                    while ((len = in.read(buf)) != -1) {
+                        out.write(buf, 0, len);
+                    }
+                } catch (SocketTimeoutException e) {
+                    this.logger.warn("Download timed out: " + connection.getURL());
+                    return null;
+                }
+                this.logger.info("Downloaded library " + connection.getURL());
+                return out.toByteArray();
+            } finally {
+                if (in != null) {
+                    try {
+                        in.close();
+                    } catch (Throwable throwable2) {
+                    }
+                }
+            }
+        } catch (MalformedURLException e) {
+            throw new IllegalArgumentException(e);
+        } catch (IOException e) {
+            if (e instanceof FileNotFoundException) {
+                this.logger.debug("File not found: " + url);
+                return null;
+            }
+            if (e instanceof SocketTimeoutException) {
+                this.logger.debug("Connect timed out: " + url);
+                return null;
+            }
+            if (e instanceof UnknownHostException) {
+                this.logger.debug("Unknown host: " + url);
+                return null;
+            }
+            this.logger.debug("Unexpected IOException: " + e.getMessage());
+            return null;
+        }
+    }
+
+    public Path downloadLibrary(Library library) {
+        Path file = this.saveDirectory.resolve(Objects.requireNonNull(library, "library").getPath());
+        if (Files.exists(file)) {
+            return file;
+        }
+        Collection<String> urls = this.resolveLibrary(library);
+        if (urls.isEmpty()) {
+            throw new RuntimeException("Library '" + library + "' couldn't be resolved, add a repository");
+        }
+        MessageDigest md = null;
+        if (library.hasChecksum()) {
+            try {
+                md = MessageDigest.getInstance("SHA-256");
+            } catch (NoSuchAlgorithmException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        Path out = file.resolveSibling(file.getFileName() + ".tmp");
+        out.toFile().deleteOnExit();
+        try {
+            Files.createDirectories(file.getParent());
+            for (String url : urls) {
+                byte[] checksum;
+                byte[] bytes = this.downloadLibrary(url);
+                if (bytes == null) continue;
+                if (md != null && !Arrays.equals(checksum = md.digest(bytes), library.getChecksum())) {
+                    this.logger.warn("*** INVALID CHECKSUM ***");
+                    this.logger.warn(" Library :  " + library);
+                    this.logger.warn(" URL :  " + url);
+                    this.logger.warn(" Expected :  " + Base64.getEncoder().encodeToString(library.getChecksum()));
+                    this.logger.warn(" Actual :  " + Base64.getEncoder().encodeToString(checksum));
+                    continue;
+                }
+                Files.write(out, bytes);
+                Files.move(out, file);
+                return file;
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        } finally {
+            try {
+                Files.deleteIfExists(out);
+            } catch (IOException ignored) {
+            }
+        }
+        throw new RuntimeException("Failed to download library '" + library + "'");
     }
 
     public void loadLibrary(Library library) {
-        Path libraryPath = getLibraryPath(library);
-
-        if (!Files.exists(libraryPath)) {
-            downloadLibrary(library, libraryPath);
+        Path file = this.downloadLibrary(Objects.requireNonNull(library, "library"));
+        if (library.hasRelocations()) {
+            file = this.relocate(file, library.getRelocatedPath(), library.getRelocations());
         }
-
-        verifyChecksum(libraryPath, library.getChecksum());
-
-        addToClasspath(libraryPath);
-    }
-
-    protected void addToClasspath(Path file) {
-    }
-
-    protected void downloadLibrary(Library library, Path targetPath) {
-        try {
-            Files.createDirectories(targetPath.getParent());
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to create library directory: " + targetPath.getParent(), e);
-        }
-
-        URL libraryUrl = resolveLibraryUrl(library);
-        if (libraryUrl == null) {
-            throw new RuntimeException("Could not resolve library URL for: " + library);
-        }
-
-        try (InputStream inputStream = libraryUrl.openStream()) {
-            Files.copy(inputStream, targetPath);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to download library: " + libraryUrl, e);
+        if (library.isIsolatedLoad()) {
+            this.addToIsolatedClasspath(library, file);
+        } else {
+            this.addToClasspath(file);
         }
     }
 
-    protected URL resolveLibraryUrl(Library library) {
-        if (!library.getUrls().isEmpty()) {
-            for (String url : library.getUrls()) {
-                try {
-                    return new URL(url);
-                } catch (Exception ignored) {
-                }
+    private Path relocate(Path in, String out, Collection<Relocation> relocations) {
+        Objects.requireNonNull(in, "in");
+        Objects.requireNonNull(out, "out");
+        Objects.requireNonNull(relocations, "relocations");
+        Path file = this.saveDirectory.resolve(out);
+        if (Files.exists(file)) {
+            return file;
+        }
+        Path tmpOut = file.resolveSibling(file.getFileName() + ".tmp");
+        tmpOut.toFile().deleteOnExit();
+        synchronized (this) {
+            if (this.relocator == null) {
+                this.relocator = new RelocationHelper(this);
             }
         }
-
-        List<String> repos = new ArrayList<>(library.getRepositories());
-        if (repos.isEmpty()) {
-            repos.addAll(getRepositories());
-        }
-        if (repos.isEmpty()) {
-            repos.add(Repositories.MAVEN_CENTRAL);
-        }
-
-        String artifactPath = buildArtifactPath(library);
-
-        for (String repo : repos) {
+        try {
+            this.relocator.relocate(in, tmpOut, relocations);
+            Files.move(tmpOut, file);
+            this.logger.info("Relocations applied to " + this.saveDirectory.getParent().relativize(in));
+            return file;
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        } finally {
             try {
-                String urlStr = repo + artifactPath;
-                URL url = new URL(urlStr);
-                if (isUrlAccessible(url)) {
-                    return url;
-                }
-            } catch (Exception ignored) {
+                Files.deleteIfExists(tmpOut);
+            } catch (IOException ignored) {
             }
         }
-
-        return null;
     }
 
-    private boolean isUrlAccessible(URL url) {
-        try (InputStream inputStream = url.openStream()) {
-            return inputStream.read() != -1;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    protected String buildArtifactPath(Library library) {
-        StringBuilder path = new StringBuilder();
-        path.append(library.getGroupId().replace(".", "/"));
-        path.append("/");
-        path.append(library.getArtifactId());
-        path.append("/");
-        path.append(library.getVersion());
-        path.append("/");
-        path.append(library.getArtifactId());
-        path.append("-");
-        path.append(library.getVersion());
-
-        if (library.getClassifier() != null && !library.getClassifier().isEmpty()) {
-            path.append("-").append(library.getClassifier());
-        }
-
-        path.append(".jar");
-
-        return path.toString();
-    }
-
-    protected void verifyChecksum(Path libraryPath, byte[] expectedChecksum) {
-        if (expectedChecksum == null || expectedChecksum.length == 0) {
-            return;
-        }
-
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] actualChecksum = digest.digest(Files.readAllBytes(libraryPath));
-
-            if (!MessageDigest.isEqual(expectedChecksum, actualChecksum)) {
-                throw new SecurityException("Library checksum verification failed: " + libraryPath);
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to verify library checksum: " + libraryPath, e);
-        }
-    }
-
-    public Path getCachePath() {
-        return cachePath;
-    }
-
-    public Path getLibraryPath(Library library) {
-        String path = library.getGroupId().replace(".", "/") + "/" 
-                    + library.getArtifactId() + "/" 
-                    + library.getVersion() + "/" 
-                    + library.getArtifactId() + "-" + library.getVersion() + ".jar";
-        return cachePath.resolve(directoryName).resolve(path);
+    public Path getSaveDirectory() {
+        return saveDirectory;
     }
 }

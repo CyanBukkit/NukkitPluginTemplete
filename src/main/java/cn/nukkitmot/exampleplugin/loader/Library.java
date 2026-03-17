@@ -72,6 +72,50 @@ public class Library {
     public Collection<Relocation> getRelocations() { return relocations; }
     public boolean isIsolatedLoad() { return isolatedLoad; }
 
+    public String getPath() {
+        StringBuilder path = new StringBuilder();
+        path.append(groupId.replace(".", "/"));
+        path.append("/");
+        path.append(artifactId);
+        path.append("/");
+        path.append(version);
+        path.append("/");
+        path.append(artifactId);
+        path.append("-");
+        path.append(version);
+        if (classifier != null && !classifier.isEmpty()) {
+            path.append("-").append(classifier);
+        }
+        path.append(".jar");
+        return path.toString();
+    }
+
+    public String getRelocatedPath() {
+        StringBuilder path = new StringBuilder();
+        path.append(groupId.replace(".", "/"));
+        path.append("/");
+        path.append(artifactId);
+        path.append("/");
+        path.append(version);
+        path.append("/");
+        path.append(artifactId);
+        path.append("-");
+        path.append(version);
+        if (classifier != null && !classifier.isEmpty()) {
+            path.append("-").append(classifier);
+        }
+        path.append("-relocated.jar");
+        return path.toString();
+    }
+
+    public boolean hasChecksum() {
+        return checksum != null && checksum.length > 0;
+    }
+
+    public boolean hasRelocations() {
+        return relocations != null && !relocations.isEmpty();
+    }
+
     public static class Builder {
         private final Collection<String> urls = new LinkedList<>();
         private final Collection<String> repositories = new LinkedList<>();
