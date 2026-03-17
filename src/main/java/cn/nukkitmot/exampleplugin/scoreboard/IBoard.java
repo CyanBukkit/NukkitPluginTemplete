@@ -18,13 +18,14 @@
 
 package cn.nukkitmot.exampleplugin.text;
 
-/**
- * 计分板快速创建接口
- */
-public class ScoreBoardAPI {
+import cn.nukkit.Player;
 
-    public static void init() {
+import java.util.Collection;
 
-    }
+public interface IBoard {
+    void update(String title, Collection<String> lines);
 
+    void delete();
+
+    Player getPlayer();
 }
