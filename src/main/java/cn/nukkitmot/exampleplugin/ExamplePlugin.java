@@ -9,18 +9,17 @@ import cn.nukkit.lang.LangCode;
 import cn.nukkit.lang.PluginI18n;
 import cn.nukkit.lang.PluginI18nManager;
 import cn.nukkit.plugin.PluginBase;
-import cn.nukkit.utils.Config;
-import cn.nukkit.utils.ConfigSection;
 import cn.nukkit.utils.TextFormat;
 import cn.nukkitmot.exampleplugin.command.ExampleCommand;
 import cn.nukkitmot.exampleplugin.config.ExampleConfig;
 import cn.nukkitmot.exampleplugin.custom.enchantment.AutoRemeltedEnchatment;
 import cn.nukkitmot.exampleplugin.custom.entity.MarkerEntity;
 import cn.nukkitmot.exampleplugin.custom.item.CandyCaneSword;
+import cn.nukkitmot.exampleplugin.loader.Library;
+import cn.nukkitmot.exampleplugin.loader.NukkitLibraryManager;
+import cn.nukkitmot.exampleplugin.loader.Repositories;
 import lombok.Getter;
 
-import java.io.File;
-import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
@@ -36,6 +35,26 @@ public class ExamplePlugin extends PluginBase {
     public static LangCode serverLangCode;
     @Getter
     public static ExampleConfig EXAMPLE_CONFIG;
+    private final NukkitLibraryManager libraryManager;
+
+    public ExamplePlugin() {
+        libraryManager = new NukkitLibraryManager(this);
+
+        // 添加 Maven 仓库
+        libraryManager.addRepository(Repositories.MAVEN_CENTRAL);
+        libraryManager.addRepository(Repositories.JITPACK);
+
+        // 加载依赖库（示例：加载 Kotlin 标准库）
+        Library kotlinStdLib = Library.builder()
+                .groupId("org.jetbrains.kotlin")
+                .artifactId("kotlin-stdlib")
+                .version("1.9.20")
+                .build();
+
+        libraryManager.loadLibrary(kotlinStdLib);
+
+        getLogger().info("依赖库加载完成");
+    }
 
 
     @Override

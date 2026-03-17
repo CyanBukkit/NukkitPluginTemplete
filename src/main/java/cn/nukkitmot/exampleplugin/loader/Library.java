@@ -1,4 +1,22 @@
-package cn.nukkitmot.exampleplugin.loader.lanternmc;
+/*
+ * Copyright (c) 2026.
+ * # 太霄玉府五雷使院镇煞符
+ * # 敕令：诸 BUG 急退，急急如律令！
+ * #
+ * # 雷  火  雷
+ * #    部  令
+ * # 雷  火  雷
+ * #
+ * # 净天地神咒（节选）
+ * # 天地自然，秽气分散，洞中玄虚，晃朗太元；
+ * # 八方威神，使我自然，灵宝符命，普告九天。
+ * #
+ * # 本代码受太上老君、九天应元雷声普化天尊庇佑，
+ * # 如生 BUG，则坎离交泰，雷火丹成，BUG 自化虚无。
+ *
+ */
+
+package cn.nukkitmot.exampleplugin.loader;
 
 import java.util.Collection;
 import java.util.LinkedList;
@@ -31,9 +49,28 @@ public class Library {
         this.isolatedLoad = isolatedLoad;
     }
 
+    public static Library create(String groupId, String artifactId, String version) {
+        return builder()
+                .groupId(groupId)
+                .artifactId(artifactId)
+                .version(version)
+                .build();
+    }
+
     public static Builder builder() {
         return new Builder();
     }
+
+    public Collection<String> getUrls() { return urls; }
+    public Collection<String> getRepositories() { return repositories; }
+    public String getId() { return id; }
+    public String getGroupId() { return groupId; }
+    public String getArtifactId() { return artifactId; }
+    public String getVersion() { return version; }
+    public String getClassifier() { return classifier; }
+    public byte[] getChecksum() { return checksum; }
+    public Collection<Relocation> getRelocations() { return relocations; }
+    public boolean isIsolatedLoad() { return isolatedLoad; }
 
     public static class Builder {
         private final Collection<String> urls = new LinkedList<>();
