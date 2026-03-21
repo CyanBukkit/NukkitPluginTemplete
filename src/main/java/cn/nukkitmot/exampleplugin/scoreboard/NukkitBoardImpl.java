@@ -19,26 +19,22 @@
 package cn.nukkitmot.exampleplugin.scoreboard;
 
 import cn.nukkit.Player;
-import cn.nukkit.network.protocol.RemoveObjectivePacket;
-import cn.nukkit.network.protocol.SetDisplayObjectivePacket;
-import cn.nukkit.network.protocol.SetScorePacket;
-import lombok.Getter;
+import cn.nukkit.scoreboard.Scoreboard;
+import cn.nukkit.scoreboard.manager.IScoreboardManager;
+import cn.nukkitmot.exampleplugin.ExamplePlugin;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
 public class NukkitBoardImpl implements IBoard {
 
     private final Player player;
-    @Getter
     private final String objectiveName;
     private String title;
-    private final List<String> currentEntries = new ArrayList<>();
-    private int displaySlot = 0;
+    private Scoreboard scoreboard;
+    private IScoreboardManager scoreboardManager;
+    private Scoreboard.DisplaySlot displaySlot = Scoreboard.DisplaySlot.SIDEBAR;
 
     public NukkitBoardImpl(Player player) {
         this(player, "");
@@ -48,165 +44,72 @@ public class NukkitBoardImpl implements IBoard {
         this.player = player;
         this.objectiveName = "sb_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
         this.title = title;
-        sendDisplayObjective();
+        this.scoreboardManager = ExamplePlugin.instance.getServer().getScoreboardManager();
+        createScoreboard();
+    }
+
+    private void createScoreboard() {
+        if (scoreboard != null) {
+            scoreboard.hideFor(player);
+        }
+        scoreboard = new Scoreboard(title, Scoreboard.SortOrder.ASCENDING, displaySlot);
+        if (scoreboard != null) {
+            scoreboard.showTo(player);
+        }
     }
 
     @Override
-    public void update(String title, Collection<String> lines) {
-        List<String> list = new ArrayList<>(lines);
-        int newRows = list.size();
-
-        removeAllScores();
-
-        this.title = title;
-        sendDisplayObjective();
-
-        for (int i = 0; i < newRows; i++) {
-            String entryName = createEntryName(i);
-            String displayText = list.get(i);
-            addScore(entryName, newRows - i, displayText);
-            currentEntries.add(entryName);
-        }
-    }
-
-    private String createEntryName(int index) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("§");
-        switch (index % 16) {
-            case 0: sb.append("0"); break;
-            case 1: sb.append("1"); break;
-            case 2: sb.append("2"); break;
-            case 3: sb.append("3"); break;
-            case 4: sb.append("4"); break;
-            case 5: sb.append("5"); break;
-            case 6: sb.append("6"); break;
-            case 7: sb.append("7"); break;
-            case 8: sb.append("8"); break;
-            case 9: sb.append("9"); break;
-            case 10: sb.append("a"); break;
-            case 11: sb.append("b"); break;
-            case 12: sb.append("c"); break;
-            case 13: sb.append("d"); break;
-            case 14: sb.append("e"); break;
-            case 15: sb.append("f"); break;
-        }
-        return sb.toString() + "§r§" + (index % 16);
-    }
-
-    private void addScore(String entryName, int score, String displayText) {
-        try {
-            SetScorePacket pk = new SetScorePacket();
-            setField(pk, "action", 0);
-
-            Object entry = createScoreEntry(entryName, score);
-            if (entry == null) {
+    public void update(String title, List<String> lines) {
+        boolean titleChanged = title == null ? this.title != null : !title.equals(this.title);
+        
+        if (scoreboard == null || titleChanged) {
+            this.title = title != null ? title : "";
+            createScoreboard();
+            if (scoreboard == null) {
                 return;
             }
-
-            List<Object> entryList = new ArrayList<>();
-            entryList.add(entry);
-            setField(pk, "entries", entryList);
-
-            player.dataPacket(pk);
-        } catch (Exception e) {
-            player.getServer().getLogger().warning("Failed to add score: " + e.getMessage());
         }
-    }
 
-    private void removeAllScores() {
-        try {
-            for (String entryName : currentEntries) {
-                SetScorePacket pk = new SetScorePacket();
-                setField(pk, "action", 1);
+        scoreboard.holdUpdates();
 
-                Object entry = createScoreEntry(entryName, 0);
-                if (entry == null) {
-                    continue;
-                }
+        boolean needsUpdate = false;
+        List<String> translatedLines = new ArrayList<>();
 
-                List<Object> entryList = new ArrayList<>();
-                entryList.add(entry);
-                setField(pk, "entries", entryList);
-
-                player.dataPacket(pk);
+        for (String line : lines) {
+            translatedLines.add(line);
+            if (!scoreboard.getScores().containsKey(line)) {
+                needsUpdate = true;
             }
-            currentEntries.clear();
-        } catch (Exception e) {
-            player.getServer().getLogger().warning("Failed to remove scores: " + e.getMessage());
         }
-    }
 
-    private Object createScoreEntry(String entryName, int score) {
-        try {
-            Class<?> entryClass = null;
-            for (Class<?> innerClass : SetScorePacket.class.getDeclaredClasses()) {
-                if (innerClass.getSimpleName().equals("Entry")) {
-                    entryClass = innerClass;
-                    break;
-                }
+        if (needsUpdate) {
+            scoreboard.clear();
+            int line = 0;
+            for (String text : translatedLines) {
+                scoreboard.setScore(text, line++);
             }
-
-            if (entryClass == null) {
-                return createScoreEntryViaReflection(entryName, score);
-            }
-
-            Object entry = entryClass.getDeclaredConstructor().newInstance();
-            setField(entry, "objectiveName", objectiveName);
-            setField(entry, "score", score);
-            setField(entry, "name", entryName);
-            return entry;
-        } catch (Exception e) {
-            return createScoreEntryViaReflection(entryName, score);
         }
-    }
 
-    private Object createScoreEntryViaReflection(String entryName, int score) {
-        try {
-            for (Method method : SetScorePacket.class.getMethods()) {
-                if (method.getName().equals("setScore") && method.getParameterCount() == 3) {
-                    return method.invoke(null, entryName, score, objectiveName);
-                }
-            }
-            for (Method method : SetScorePacket.class.getMethods()) {
-                if (method.getName().equals("createEntry") || method.getName().equals("createScoreEntry")) {
-                    return method.invoke(null, entryName, score, objectiveName);
-                }
-            }
-            return null;
-        } catch (Exception e) {
-            return null;
-        }
+        scoreboard.unholdUpdates();
     }
 
     @Override
     public void delete() {
-        removeAllScores();
-        try {
-            RemoveObjectivePacket pk = new RemoveObjectivePacket();
-            setField(pk, "objectiveName", objectiveName);
-            player.dataPacket(pk);
-        } catch (Exception e) {
-            player.getServer().getLogger().warning("Failed to remove objective: " + e.getMessage());
+        if (scoreboard != null) {
+            scoreboard.hideFor(player);
+            scoreboard = null;
         }
     }
 
-    private void sendDisplayObjective() {
-        try {
-            SetDisplayObjectivePacket pk = new SetDisplayObjectivePacket();
-            setField(pk, "displaySlot", displaySlot);
-            setField(pk, "objectiveName", objectiveName);
-            setField(pk, "displayName", title);
-            setField(pk, "criteriaName", "dummy");
-            setField(pk, "sortOrder", 0);
-            player.dataPacket(pk);
-        } catch (Exception e) {
-            player.getServer().getLogger().warning("Failed to send display objective: " + e.getMessage());
-        }
-    }
-
-    public NukkitBoardImpl setDisplaySlot(int slot) {
+    public NukkitBoardImpl setDisplaySlot(Scoreboard.DisplaySlot slot) {
         this.displaySlot = slot;
-        sendDisplayObjective();
+        if (scoreboard != null) {
+            scoreboard.hideFor(player);
+            scoreboard = new Scoreboard(title, Scoreboard.SortOrder.ASCENDING, displaySlot);
+            if (scoreboard != null) {
+                scoreboard.showTo(player);
+            }
+        }
         return this;
     }
 
@@ -215,36 +118,11 @@ public class NukkitBoardImpl implements IBoard {
         return player;
     }
 
-    private void setField(Object obj, String fieldName, Object value) {
-        try {
-            Field field = findField(obj.getClass(), fieldName);
-            if (field != null) {
-                field.setAccessible(true);
-                field.set(obj, value);
-            }
-        } catch (IllegalAccessException e) {
-            for (Field field : obj.getClass().getFields()) {
-                if (field.getName().equalsIgnoreCase(fieldName)) {
-                    try {
-                        field.setAccessible(true);
-                        field.set(obj, value);
-                    } catch (IllegalAccessException ignored) {
-                    }
-                    return;
-                }
-            }
-        }
+    public String getObjectiveName() {
+        return objectiveName;
     }
 
-    private Field findField(Class<?> clazz, String fieldName) {
-        while (clazz != null) {
-            for (Field field : clazz.getDeclaredFields()) {
-                if (field.getName().equals(fieldName)) {
-                    return field;
-                }
-            }
-            clazz = clazz.getSuperclass();
-        }
-        return null;
+    public Scoreboard getScoreboard() {
+        return scoreboard;
     }
 }

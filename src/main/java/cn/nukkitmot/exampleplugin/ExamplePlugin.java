@@ -38,19 +38,22 @@ public class ExamplePlugin extends PluginBase {
     public static LangCode serverLangCode;
     @Getter
     public static ExampleConfig EXAMPLE_CONFIG;
-    private final NukkitLibraryManager libraryManager;
+    private NukkitLibraryManager libraryManager;
 
     @Getter
     public static BoardManager boardManager;
 
     public ExamplePlugin() {
+    }
+
+
+    @Override
+    public void onLoad() {
         libraryManager = new NukkitLibraryManager(this);
 
-        // 添加 Maven 仓库
         libraryManager.addRepository(Repositories.MAVEN_CENTRAL);
         libraryManager.addRepository(Repositories.JITPACK);
 
-        // 加载依赖库（示例：加载 Kotlin 标准库）
         Library kotlinStdLib = Library.builder()
                 .groupId("org.jetbrains.kotlin")
                 .artifactId("kotlin-stdlib")
@@ -59,12 +62,7 @@ public class ExamplePlugin extends PluginBase {
 
         libraryManager.loadLibrary(kotlinStdLib);
         System.out.println("依赖库加载完成");
-    }
 
-
-    @Override
-    public void onLoad() {
-        //save Plugin Instance
         instance = this;
         //register the plugin i18n
         i18n = PluginI18nManager.register(this);
@@ -82,7 +80,7 @@ public class ExamplePlugin extends PluginBase {
     }
 
     @Override
-    public void onEnable() {
+    public void onEnable() { 
         this.getLogger().info(TextFormat.DARK_GREEN + "I've been enabled!");
         this.getLogger().info(String.valueOf(this.getDataFolder().mkdirs()));
 

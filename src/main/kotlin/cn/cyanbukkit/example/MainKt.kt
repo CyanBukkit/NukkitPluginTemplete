@@ -30,6 +30,7 @@ object MainKt {
         ExamplePlugin.instance.logger.info("Kotlin loaded: ${KotlinVersion.CURRENT}")
         // ❤Kotlin
         ExamplePlugin.instance.logger.info("❤Kotlin")
+
     }
 
 }

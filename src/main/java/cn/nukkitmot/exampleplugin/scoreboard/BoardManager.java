@@ -19,35 +19,54 @@
 package cn.nukkitmot.exampleplugin.scoreboard;
 
 import cn.nukkit.Player;
+import cn.nukkit.event.EventHandler;
+import cn.nukkit.event.Listener;
+import cn.nukkit.event.entity.EntityLevelChangeEvent;
+import cn.nukkit.event.player.PlayerLocallyInitializedEvent;
+import cn.nukkit.event.player.PlayerQuitEvent;
+import cn.nukkit.plugin.Plugin;
 import cn.nukkit.scheduler.PluginTask;
 import lombok.Getter;
 
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static cn.nukkitmot.exampleplugin.scoreboard.ScoreBoardAPI.createBoard;
 
-public class BoardManager {
+public class BoardManager implements Listener {
 
-    private final cn.nukkit.plugin.Plugin plugin;
+    private final Plugin plugin;
     @Getter
     private final BoardAdapter adapter;
     @Getter
     private final Map<UUID, IBoard> boards = new ConcurrentHashMap<>();
+    private final Set<String> noScoreboardWorlds = new HashSet<>();
     private PluginTask runnable;
 
-    public BoardManager(cn.nukkit.plugin.Plugin plugin, BoardAdapter adapter) {
+    public BoardManager(Plugin plugin, BoardAdapter adapter) {
         this.plugin = plugin;
         this.adapter = adapter;
         init();
     }
 
+    public void setNoScoreboardWorlds(List<String> worlds) {
+        this.noScoreboardWorlds.clear();
+        this.noScoreboardWorlds.addAll(worlds);
+    }
+
     private void init() {
+        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+
         for (Player player : plugin.getServer().getOnlinePlayers().values()) {
-            IBoard board = createBoard(player);
-            boards.put(player.getUniqueId(), board);
-            board.update(adapter.getTitle(), adapter.getStrings(player));
+            if (!noScoreboardWorlds.contains(player.getLevel().getName())) {
+                IBoard board = createBoard(player);
+                boards.put(player.getUniqueId(), board);
+                board.update(adapter.getTitle(), adapter.getStrings(player));
+            }
         }
 
         runnable = new PluginTask<>(plugin) {
@@ -57,7 +76,10 @@ public class BoardManager {
             public void onRun(int currentTick) {
                 tick++;
                 for (Player player : plugin.getServer().getOnlinePlayers().values()) {
-                    cn.nukkitmot.exampleplugin.scoreboard.IBoard board = getBoard(player);
+                    if (noScoreboardWorlds.contains(player.getLevel().getName())) {
+                        continue;
+                    }
+                    IBoard board = getBoard(player);
                     if (board != null) {
                         board.update(adapter.getTitle(), adapter.getStrings(player));
                     }
@@ -65,6 +87,47 @@ public class BoardManager {
             }
         };
         plugin.getServer().getScheduler().scheduleRepeatingTask(runnable, 10);
+    }
+
+    @EventHandler
+    public void onJoin(PlayerLocallyInitializedEvent e) {
+        Player p = e.getPlayer();
+        if (!noScoreboardWorlds.contains(p.getLevel().getName())) {
+            createScoreboard(p);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onLevelChange(EntityLevelChangeEvent e) {
+        if (e.getEntity() instanceof Player) {
+            Player p = (Player) e.getEntity();
+            if (noScoreboardWorlds.contains(e.getTarget().getName())) {
+                destroyScoreboard(p);
+            } else if (noScoreboardWorlds.contains(e.getOrigin().getName())) {
+                createScoreboard(p);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent e) {
+        destroyScoreboard(e.getPlayer());
+    }
+
+    private void createScoreboard(Player p) {
+        if (boards.containsKey(p.getUniqueId())) {
+            return;
+        }
+        IBoard board = createBoard(p);
+        boards.put(p.getUniqueId(), board);
+        board.update(adapter.getTitle(), adapter.getStrings(p));
+    }
+
+    private void destroyScoreboard(Player p) {
+        IBoard board = boards.remove(p.getUniqueId());
+        if (board != null) {
+            board.delete();
+        }
     }
 
     public IBoard getBoard(Player player) {

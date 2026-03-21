@@ -20,10 +20,10 @@ package cn.nukkitmot.exampleplugin.scoreboard;
 
 import cn.nukkit.Player;
 
-import java.util.Collection;
+import java.util.List;
 
 public interface IBoard {
-    void update(String title, Collection<String> lines);
+    void update(String title, List<String> lines);
 
     void delete();
 
