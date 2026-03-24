@@ -22,6 +22,7 @@ import cn.nukkitmot.exampleplugin.loader.Repositories;
 import cn.nukkitmot.exampleplugin.scoreboard.BoardManager;
 import cn.nukkitmot.exampleplugin.scoreboard.example.ImplInReal;
 import cn.nukkitmot.exampleplugin.nbs.NBSSoundManager;
+import cn.nukkitmot.exampleplugin.camera.CameraManager;
 import lombok.Getter;
 
 import java.util.List;
@@ -86,6 +87,7 @@ public class ExamplePlugin extends PluginBase {
         this.getLogger().info(String.valueOf(this.getDataFolder().mkdirs()));
 
         NBSSoundManager.init(this);
+        CameraManager.init(this);
 
         //Use the plugin's i18n output
         this.getLogger().info(i18n.tr(getServerLangCode(), "exampleplugin.helloworld", "世界"));
@@ -112,6 +114,7 @@ public class ExamplePlugin extends PluginBase {
     @Override
     public void onDisable() {
         NBSSoundManager.getInstance().stopAll();
+        CameraManager.getInstance().clearAllCameras();
         this.getLogger().info(TextFormat.DARK_RED + "I've been disabled!");
     }
 

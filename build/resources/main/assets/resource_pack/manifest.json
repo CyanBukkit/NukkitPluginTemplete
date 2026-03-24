@@ -1,17 +1,24 @@
 {
-  "format_version": 2,
+  "format_version": 1,
   "header": {
-    "description": "BY nukkit-mot",
-    "name": "§7测试资源包",
-    "uuid": "00000000-0000-0000-0000-000020160300",
-    "version": [1, 1, 6],
-    "min_engine_version": [1, 14, 0]
+    "name": "§l示例材质",
+    "description": "§e左侧透明渐变到右侧黑色半透明\n§7by QingTong",
+    "uuid": "3927294b-1147-43e5-b32c-d1f3846c4c36",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 18, 0]
   },
   "modules": [
     {
       "type": "resources",
-      "uuid": "dde211f9-e1a6-435e-9a84-06fa9242f63e",
+      "uuid": "c5a2ddd3-1c13-4c3a-aeb6-161d34793abf",
       "version": [1, 0, 0]
+    }
+  ],
+  "subpacks": [
+    {
+      "folder_name": "gradient",
+      "name": "§a渐变背景",
+      "memory_tier": 1
     }
   ]
 }

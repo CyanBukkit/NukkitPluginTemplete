@@ -1,4 +1,6 @@
 import org.gradle.kotlin.dsl.dependencies
+import java.util.UUID
+import java.util.regex.Pattern
 
 val group = "cn.nukkitmot.example"
 
@@ -60,6 +62,23 @@ tasks {
                 "pluginMain" to pluginMain,
                 "pluginApi" to pluginApi.joinToString(", ")
             )
+        }
+        doLast {
+            val manifestFile = file("src/main/resources/assets/resource_pack/manifest.json")
+            if (manifestFile.exists()) {
+                val content = manifestFile.readText()
+                if (content.contains("\"uuid\"")) {
+                    val uuidPattern = Pattern.compile("\"uuid\"\\s*:\\s*\"([a-f0-9\\-]+)\"")
+                    val matcher = uuidPattern.matcher(content)
+                    if (matcher.find()) {
+                        val oldUuid = matcher.group(1)
+                        val newUuid = UUID.randomUUID().toString()
+                        val newContent = content.replace(oldUuid, newUuid)
+                        manifestFile.writeText(newContent)
+                        println("[ResourcePack] Randomized UUID in manifest.json")
+                    }
+                }
+            }
         }
     }
 
