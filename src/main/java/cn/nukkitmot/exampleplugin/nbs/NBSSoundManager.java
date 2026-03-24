@@ -182,6 +182,20 @@ public class NBSSoundManager {
         }
     }
 
+    public void pauseNBSForPlayer(Player player) {
+        List<NBSSongPlayer> players = getPlayersForPlayer(player);
+        for (NBSSongPlayer nbsPlayer : players) {
+            nbsPlayer.pause();
+        }
+    }
+
+    public void resumeNBSForPlayer(Player player) {
+        List<NBSSongPlayer> players = getPlayersForPlayer(player);
+        for (NBSSongPlayer nbsPlayer : players) {
+            nbsPlayer.resume();
+        }
+    }
+
     public List<NBSSongPlayer> getActivePlayers() {
         return Collections.unmodifiableList(new ArrayList<>(activePlayers.values()));
     }

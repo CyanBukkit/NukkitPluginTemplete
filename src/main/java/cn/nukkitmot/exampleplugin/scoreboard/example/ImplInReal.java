@@ -27,11 +27,11 @@ import java.util.List;
 public class ImplInReal implements BoardAdapter {
     @Override
     public String getTitle() {
-        return "我是计分板";
+        return "§b花雨庭";
     }
 
     @Override
     public List<String> getStrings(Player player) {
-        return List.of(" CyanNukkit(不是)");
+        return List.of(" CyanNukkit(不是)","§b如果我要这么写你会如何感想？");
     }
 }

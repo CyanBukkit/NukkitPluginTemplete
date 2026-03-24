@@ -4,9 +4,16 @@ import cn.nukkit.Player;
 import cn.nukkit.Server;
 import cn.nukkit.level.Position;
 import cn.nukkit.math.Vector3;
+import cn.nukkit.math.Vector2f;
+import cn.nukkit.math.Vector3f;
+import cn.nukkit.network.protocol.CameraInstructionPacket;
+import cn.nukkit.network.protocol.types.camera.CameraEase;
+import cn.nukkit.network.protocol.types.camera.CameraSetInstruction;
 import cn.nukkit.plugin.Plugin;
 import cn.nukkit.plugin.PluginLogger;
 import cn.nukkit.scheduler.TaskHandler;
+import cn.nukkit.utils.CameraPresetManager;
+import org.cloudburstmc.protocol.common.util.OptionalBoolean;
 
 import java.util.Map;
 import java.util.UUID;
@@ -227,28 +234,90 @@ public class CameraManager {
             return;
         }
 
-        StringBuilder cmd = new StringBuilder("/camera ");
-        cmd.append(player.getName()).append(" ");
+        CameraInstructionPacket pk = new CameraInstructionPacket();
+        CameraSetInstruction cameraSetInstruction = new CameraSetInstruction();
+        cameraSetInstruction.setPreset(CameraPresetManager.FREE);
 
         Vector3 pos = position.getPosition();
-        Vector3 rot = position.getRotation();
+        cameraSetInstruction.setPos(new Vector3f((float) pos.x, (float) pos.y, (float) pos.z));
 
-        cmd.append("set minecraft:free ");
+        Vector3 rot = position.getRotation();
+        cameraSetInstruction.setRot(new Vector2f((float) rot.x, (float) rot.y));
 
         if (easeTime > 0) {
-            cmd.append("ease ").append(easeTime).append(" ").append(easeType.getName()).append(" ");
+            cameraSetInstruction.setEase(new CameraSetInstruction.EaseData(convertEaseType(easeType), easeTime));
         }
 
-        cmd.append("pos ").append(String.format("%.2f", pos.x)).append(" ");
-        cmd.append(String.format("%.2f", pos.y)).append(" ");
-        cmd.append(String.format("%.2f", pos.z));
+        pk.setSetInstruction(cameraSetInstruction);
+        player.dataPacket(pk);
+    }
 
-        if (rot.x != 0 || rot.y != 0) {
-            cmd.append(" rot ").append(String.format("%.2f", rot.x)).append(" ");
-            cmd.append(String.format("%.2f", rot.y));
+    private CameraEase convertEaseType(CameraInstruction.EaseType easeType) {
+        if (easeType == null) {
+            return CameraEase.LINEAR;
         }
-
-        Server.getInstance().dispatchCommand(Server.getInstance().getConsoleSender(), cmd.toString());
+        switch (easeType) {
+            case LINEAR:
+                return CameraEase.LINEAR;
+            case SPRING:
+                return CameraEase.SPRING;
+            case IN_QUAD:
+                return CameraEase.EASE_IN_QUAD;
+            case OUT_QUAD:
+                return CameraEase.EASE_OUT_QUAD;
+            case IN_OUT_QUAD:
+                return CameraEase.EASE_IN_OUT_QUAD;
+            case IN_CUBIC:
+                return CameraEase.EASE_IN_CUBIC;
+            case OUT_CUBIC:
+                return CameraEase.EASE_OUT_CUBIC;
+            case IN_OUT_CUBIC:
+                return CameraEase.EASE_IN_OUT_CUBIC;
+            case IN_QUART:
+                return CameraEase.EASE_IN_QUART;
+            case OUT_QUART:
+                return CameraEase.EASE_OUT_QUART;
+            case IN_OUT_QUART:
+                return CameraEase.EASE_IN_OUT_QUART;
+            case IN_SINE:
+                return CameraEase.EASE_IN_SINE;
+            case OUT_SINE:
+                return CameraEase.EASE_OUT_SINE;
+            case IN_OUT_SINE:
+                return CameraEase.EASE_IN_OUT_SINE;
+            case IN_EXPO:
+                return CameraEase.EASE_IN_EXPO;
+            case OUT_EXPO:
+                return CameraEase.EASE_OUT_EXPO;
+            case IN_OUT_EXPO:
+                return CameraEase.EASE_IN_OUT_EXPO;
+            case IN_CIRC:
+                return CameraEase.EASE_IN_CIRC;
+            case OUT_CIRC:
+                return CameraEase.EASE_OUT_CIRC;
+            case IN_OUT_CIRC:
+                return CameraEase.EASE_IN_OUT_CIRC;
+            case IN_BACK:
+                return CameraEase.EASE_IN_BACK;
+            case OUT_BACK:
+                return CameraEase.EASE_OUT_BACK;
+            case IN_OUT_BACK:
+                return CameraEase.EASE_IN_OUT_BACK;
+            case IN_ELASTIC:
+                return CameraEase.EASE_IN_ELASTIC;
+            case OUT_ELASTIC:
+                return CameraEase.EASE_OUT_ELASTIC;
+            case IN_OUT_ELASTIC:
+                return CameraEase.EASE_IN_OUT_ELASTIC;
+            case IN_BOUNCE:
+                return CameraEase.EASE_IN_BOUNCE;
+            case OUT_BOUNCE:
+                return CameraEase.EASE_OUT_BOUNCE;
+            case IN_OUT_BOUNCE:
+                return CameraEase.EASE_IN_OUT_BOUNCE;
+            default:
+                return CameraEase.LINEAR;
+        }
     }
 
     /**
@@ -353,8 +422,9 @@ public class CameraManager {
             return;
         }
 
-        String cmd = "/camera " + player.getName() + " clear";
-        Server.getInstance().dispatchCommand(Server.getInstance().getConsoleSender(), cmd);
+        CameraInstructionPacket pk = new CameraInstructionPacket();
+        pk.setClear(OptionalBoolean.of(true));
+        player.dataPacket(pk);
 
         playerCameras.remove(player.getUniqueId());
         stopSequence(player);
@@ -374,8 +444,9 @@ public class CameraManager {
         for (UUID uuid : playerCameras.keySet()) {
             Player player = Server.getInstance().getOnlinePlayers().get(uuid);
             if (player != null && player.isOnline()) {
-                String cmd = "/camera " + player.getName() + " clear";
-                Server.getInstance().dispatchCommand(Server.getInstance().getConsoleSender(), cmd);
+                CameraInstructionPacket pk = new CameraInstructionPacket();
+                pk.setClear(OptionalBoolean.of(true));
+                player.dataPacket(pk);
             }
         }
         playerCameras.clear();

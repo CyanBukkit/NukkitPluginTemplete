@@ -12,6 +12,7 @@ import cn.nukkit.lang.PluginI18nManager;
 import cn.nukkit.plugin.PluginBase;
 import cn.nukkit.utils.TextFormat;
 import cn.nukkitmot.exampleplugin.command.ExampleCommand;
+import cn.nukkitmot.exampleplugin.command.TestCommand;
 import cn.nukkitmot.exampleplugin.config.ExampleConfig;
 import cn.nukkitmot.exampleplugin.custom.enchantment.AutoRemeltedEnchatment;
 import cn.nukkitmot.exampleplugin.custom.entity.MarkerEntity;
@@ -71,6 +72,7 @@ public class ExamplePlugin extends PluginBase {
         initServerLangCode();
         //register the command of plugin
         this.getServer().getCommandMap().register("exampleplugin", new ExampleCommand());
+        this.getServer().getCommandMap().register("exampleplugin", new TestCommand());
 
         //register the custom item of server
 //        registerItems();
@@ -100,6 +102,7 @@ public class ExamplePlugin extends PluginBase {
 
         //Save resources
         this.saveResource("string.txt");
+        this.saveResource("Joy To The World.nbs");
 
         //Config reading and writing
         EXAMPLE_CONFIG = new ExampleConfig();
